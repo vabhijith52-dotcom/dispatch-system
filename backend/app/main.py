@@ -35,11 +35,19 @@ app.mount("/media", StaticFiles(directory=settings.OUTPUT_DIR), name="media")
 async def on_startup():
     Base.metadata.create_all(bind=engine)
 
+    # Start the DB listener immediately so websocket clients get a live
+    # connection right away, instead of only after preprocessing finishes.
     asyncio.create_task(start_listener())
 
-    if os.getenv("RUN_PREPROCESS", "false").lower() == "true":
-        await asyncio.to_thread(generate_annotated_video)
-        start_event_scheduler()
+    # generate_annotated_video() is a long, CPU-bound, blocking call (real
+    # model inference over every frame). Running it directly here would
+    # freeze the whole event loop — no HTTP responses, no websocket
+    # handshakes — for the entire duration. asyncio.to_thread keeps the
+    # server responsive while it runs in the background.
+    await asyncio.to_thread(generate_annotated_video)
+
+    # Replays the resulting events into Postgres in sync with the looping video.
+    start_event_scheduler()
 
 
 @app.get("/api/health")
