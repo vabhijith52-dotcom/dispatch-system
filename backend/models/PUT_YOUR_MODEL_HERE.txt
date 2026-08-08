@@ -1,0 +1,2 @@
+Place your trained YOLO weights file here and name it best.pt
+(or update YOLO_MODEL_PATH in .env to point elsewhere).
