@@ -2,7 +2,9 @@
 // No mock data, no Lovable/localStorage-only auth.
 
 const API_BASE = "http://localhost:8000";
+
 export const WS_URL = "ws://localhost:8000/ws/live";
+
 // The actual test.mp4, annotated with your trained model's real
 // detections and re-encoded to H.264/yuv420p for universal <video>
 // support — not a live MJPEG stream (see backend/app/video_preprocess.py).
@@ -43,11 +45,19 @@ export interface DetectionStatus {
 }
 
 function authHeaders(): HeadersInit {
-  const token = isSignedIn() ? window.localStorage.getItem(TOKEN_KEY) : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const token = isSignedIn()
+    ? window.localStorage.getItem(TOKEN_KEY)
+    : null;
+
+  return token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
@@ -59,35 +69,93 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText}${body ? `: ${body}` : ""}`);
+
+    throw new Error(
+      `${res.status} ${res.statusText}${
+        body ? `: ${body}` : ""
+      }`,
+    );
   }
-  if (res.status === 204) return undefined as T;
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json();
 }
 
-export async function login(email: string, password: string): Promise<void> {
-  const data = await request<{ access_token: string }>("/api/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ username: email, password }),
-  });
-  window.localStorage.setItem(TOKEN_KEY, data.access_token);
+export async function login(
+  email: string,
+  password: string,
+): Promise<void> {
+  const data = await request<{ access_token: string }>(
+    "/api/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        username: email,
+        password,
+      }),
+    },
+  );
+
+  window.localStorage.setItem(
+    TOKEN_KEY,
+    data.access_token,
+  );
 }
 
 export function signOut() {
-  if (typeof window !== "undefined") window.localStorage.removeItem(TOKEN_KEY);
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 export function isSignedIn(): boolean {
-  return typeof window !== "undefined" && !!window.localStorage.getItem(TOKEN_KEY);
+  return (
+    typeof window !== "undefined" &&
+    !!window.localStorage.getItem(TOKEN_KEY)
+  );
 }
 
-export const fetchTrucks = () => request<Truck[]>("/api/trucks");
+// --------------------------------------------------
+// Truck API
+// --------------------------------------------------
+
+export const fetchTrucks = () =>
+  request<Truck[]>("/api/trucks");
 
 export const fetchTruckEvents = (truckId: number) =>
-  request<CountEvent[]>(`/api/trucks/${truckId}/events`);
+  request<CountEvent[]>(
+    `/api/trucks/${truckId}/events`,
+  );
+
+export const createTruck = (payload: {
+  truck_code: string;
+  expected_count: number;
+}) =>
+  request<Truck>("/api/trucks", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const updateTruck = (
+  truckId: number,
+  payload: Partial<
+    Pick<
+      Truck,
+      "expected_count" | "plate_number" | "status"
+    >
+  >,
+) =>
+  request<Truck>(`/api/trucks/${truckId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+// --------------------------------------------------
+// Detection API
+// --------------------------------------------------
 
 export const fetchDetectionStatus = () =>
   request<DetectionStatus>("/api/detections/status");
-
-export const createTruck = (payload: { truck_code: string; expected_count: number }) =>
-  request<Truck>("/api/trucks", { method: "POST", body: JSON.stringify(payload) });
