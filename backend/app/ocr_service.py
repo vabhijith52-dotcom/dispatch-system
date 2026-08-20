@@ -37,71 +37,11 @@ def clean_plate_text(text: str) -> str:
 
 def correct_plate(text: str) -> str:
     """
-    Correct common OCR mistakes based on expected
-    Indian registration format.
+    Do not perform character substitutions.
 
-    Format:
-    AA00AA0000
+    Return only the cleaned OCR text.
     """
-
-    text = clean_plate_text(text)
-
-    if len(text) < 8:
-        return text
-
-    chars = list(text)
-
-    # ---- State code (letters) ----
-    for i in range(min(2, len(chars))):
-        chars[i] = (
-            chars[i]
-            .replace("0", "O")
-            .replace("1", "I")
-            .replace("5", "S")
-            .replace("8", "B")
-            .replace("2", "Z")
-        )
-
-    # ---- District code (digits) ----
-    for i in range(2, min(4, len(chars))):
-        chars[i] = (
-            chars[i]
-            .replace("O", "0")
-            .replace("Q", "0")
-            .replace("I", "1")
-            .replace("L", "1")
-            .replace("Z", "2")
-            .replace("S", "5")
-            .replace("B", "8")
-        )
-
-    # ---- Series letters ----
-    for i in range(4, min(len(chars) - 4, len(chars))):
-        chars[i] = (
-            chars[i]
-            .replace("0", "O")
-            .replace("1", "I")
-            .replace("5", "S")
-            .replace("8", "B")
-            .replace("2", "Z")
-        )
-
-    # ---- Last four digits ----
-    start = max(len(chars) - 4, 0)
-
-    for i in range(start, len(chars)):
-        chars[i] = (
-            chars[i]
-            .replace("O", "0")
-            .replace("Q", "0")
-            .replace("I", "1")
-            .replace("L", "1")
-            .replace("Z", "2")
-            .replace("S", "5")
-            .replace("B", "8")
-        )
-
-    return "".join(chars)
+    return clean_plate_text(text)
 
 
 def preprocess_image(img):
